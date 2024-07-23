@@ -1,0 +1,29 @@
+{
+    "resolution": "reso_1920x1080",
+    "windows_scaling": "100",
+    "buffbar_size": "large",
+    "update_rate": 50,
+    "main_roi": {
+        "left": 895,
+        "top": 1053,
+        "width": 795,
+        "height": 160
+    },
+    "scale": 0.12,
+    "image_position": {
+        "x": 1517,
+        "y": 728
+    },
+    "alerts": {
+        "souls": {
+            "enabled": true,
+            "volume": 0.5,
+            "sound_file": "woo.mp3"
+        },
+        "necrosis": {
+            "enabled": true,
+            "volume": 0.5,
+            "sound_file": "fisting.mp3"
+        }
+    }
+}

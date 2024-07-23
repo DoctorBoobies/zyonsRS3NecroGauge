@@ -12,7 +12,7 @@ from PyQt5.QtWidgets import (
     QShortcut,
     QGroupBox,
     QLineEdit,
-    QComboBox
+    QComboBox,
 )
 from PyQt5.QtGui import QPixmap, QImage, QKeySequence
 import ctypes
@@ -34,46 +34,52 @@ pygame.mixer.init()
 u32 = ctypes.windll.user32
 k32 = ctypes.windll.kernel32
 
-if hasattr(sys, '_MEIPASS'):
+if hasattr(sys, "_MEIPASS"):
     base_path = sys._MEIPASS
 else:
     base_path = os.path.abspath(".")
 
-config_path = 'config.json'
+config_path = "config.json"
+
 
 def load_config():
     if os.path.exists(config_path):
-        with open(config_path, 'r') as f:
+        with open(config_path, "r") as f:
             return json.load(f)
     else:
         return {}
 
+
 def save_config(config):
-    with open(config_path, 'w') as f:
+    with open(config_path, "w") as f:
         json.dump(config, f)
+
 
 def get_available_resolutions():
     resolutions = []
-    for folder in os.listdir(os.path.join(base_path, 'assets')):
-        if re.match(r'reso_*', folder):
+    for folder in os.listdir(os.path.join(base_path, "assets")):
+        if re.match(r"reso_*", folder):
             resolutions.append(folder)
     return resolutions
 
+
 def get_windows_scaling_options(resolution):
     scaling_options = []
-    path = os.path.join(base_path, 'assets', resolution)
+    path = os.path.join(base_path, "assets", resolution)
     if os.path.exists(path):
         for folder in os.listdir(path):
             scaling_options.append(folder)
     return scaling_options
 
+
 def get_buffbar_size_options(resolution, windows_scaling):
     buffbar_sizes = []
-    path = os.path.join(base_path, 'assets', resolution, windows_scaling)
+    path = os.path.join(base_path, "assets", resolution, windows_scaling)
     if os.path.exists(path):
         for folder in os.listdir(path):
             buffbar_sizes.append(folder)
     return buffbar_sizes
+
 
 def get_foreground_window_title():
     hwnd = u32.GetForegroundWindow()
@@ -82,23 +88,35 @@ def get_foreground_window_title():
     u32.GetWindowTextW(hwnd, sz_buffer, hwnd_title_len)
     return sz_buffer.value
 
+
 config = load_config()
 
 preconfigured = bool(config)
 
-main_roi = config.get('main_roi', {'left': 0, 'top': 0, 'width': 795, 'height': 160})
-scale = config.get('scale', 1/6.5)
-image_position = config.get('image_position', {'x': 0, 'y': 0})
-resolution = config.get('resolution', 'reso_3840x2160')
-windows_scaling = config.get('windows_scaling', 150)
-buffbar_size = config.get('buffbar_size', 'medium')
-update_rate = config.get('update_rate', 50)
+main_roi = config.get("main_roi", {"left": 0, "top": 0, "width": 795, "height": 160})
+scale = config.get("scale", 1 / 6.5)
+image_position = config.get("image_position", {"x": 0, "y": 0})
+resolution = config.get("resolution", "reso_3840x2160")
+windows_scaling = config.get("windows_scaling", 150)
+buffbar_size = config.get("buffbar_size", "medium")
+update_rate = config.get("update_rate", 50)
 
-asset_path_prefix = os.path.join(base_path, 'assets', resolution, str(windows_scaling), buffbar_size)
+asset_path_prefix = os.path.join(
+    base_path, "assets", resolution, str(windows_scaling), buffbar_size
+)
 
-initial_image_path = os.path.join(base_path, 'assets', 'transparent_bg\\s0_n0.png')
-soul_alert_sound_path = os.path.join(base_path, 'assets', 'soul_alert.wav')
-necrosis_alert_sound_path = os.path.join(base_path, 'assets', 'necrosis_alert.wav')
+initial_image_path = os.path.join(base_path, "assets", "transparent_bg\\s0_n0.png")
+
+alerts_config = config.get("alerts", None)
+if alerts_config is None:
+    raise Exception("Alerts configuration not found in config.json")
+
+souls_alerts_config = alerts_config.get("souls", None)
+necrosis_alerts_config = alerts_config.get("necrosis", None)
+
+soul_alert_sound_path = souls_alerts_config.get("sound_file", None)
+necrosis_alert_sound_path = necrosis_alerts_config.get("sound_file", None)
+
 
 class ImageDisplay(QWidget):
     def __init__(self):
@@ -108,20 +126,28 @@ class ImageDisplay(QWidget):
         self.necrosis_alert_played = False
 
     def initUI(self):
-        self.setWindowTitle('RS3 Necro Gauge')
-        self.setGeometry(0, 0, self.screen().size().width(), self.screen().size().height())
+        self.setWindowTitle("RS3 Necro Gauge")
+        self.setGeometry(
+            0, 0, self.screen().size().width(), self.screen().size().height()
+        )
         self.setAttribute(QtCore.Qt.WA_TranslucentBackground, True)
         self.setAttribute(QtCore.Qt.WA_NoSystemBackground, True)
         if preconfigured:
             self.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents, True)
             self.setAttribute(QtCore.Qt.WA_NoChildEventsForParent, True)
-        self.setWindowFlags(self.windowFlags() | QtCore.Qt.FramelessWindowHint | QtCore.Qt.WindowStaysOnTopHint)
+        self.setWindowFlags(
+            self.windowFlags()
+            | QtCore.Qt.FramelessWindowHint
+            | QtCore.Qt.WindowStaysOnTopHint
+        )
 
         self.main_layout = QVBoxLayout(self)
         self.setLayout(self.main_layout)
 
         self.image_label = QLabel(self)
-        self.image_label.setGeometry(0, 0, self.screen().size().width(), self.screen().size().height())
+        self.image_label.setGeometry(
+            0, 0, self.screen().size().width(), self.screen().size().height()
+        )
 
         if preconfigured:
             # Apply saved settings directly
@@ -144,31 +170,31 @@ class ImageDisplay(QWidget):
         self.slider_box.setGeometry(800, 200, 500, 200)
         self.slider_layout = QVBoxLayout()
         self.slider_box.setLayout(self.slider_layout)
-        self.slider_box.setStyleSheet("background-color: rgba(255, 255, 255, 150);")  # Semi-transparent background
+        self.slider_box.setStyleSheet(
+            "background-color: rgba(255, 255, 255, 150);"
+        )  # Semi-transparent background
 
         # Resolution Dropdown
         self.resolution_dropdown = QComboBox(self)
-        self.resolution_dropdown.addItems(get_available_resolutions()+['custom'])
-        self.resolution_label = QLabel('Resolution')
+        self.resolution_dropdown.addItems(get_available_resolutions() + ["custom"])
+        self.resolution_label = QLabel("Resolution")
         self.slider_layout.addWidget(self.resolution_label)
         self.slider_layout.addWidget(self.resolution_dropdown)
 
-        self.confirmResolution_button = QPushButton('Confirm')
+        self.confirmResolution_button = QPushButton("Confirm")
         self.confirmResolution_button.clicked.connect(self.confirmResolution)
         self.slider_layout.addWidget(self.confirmResolution_button)
 
-
     def confirmResolution(self):
         global config
-        config['resolution'] = self.resolution_dropdown.currentText()
+        config["resolution"] = self.resolution_dropdown.currentText()
 
         self.resolution_label.setParent(None)
         self.resolution_dropdown.setParent(None)
         self.confirmResolution_button.setParent(None)
         self.slider_box.setTitle("Window Scaling Settings")
 
-
-        if self.resolution_dropdown.currentText()=='custom':
+        if self.resolution_dropdown.currentText() == "custom":
             self.slider_box.setGeometry(800, 200, 500, 200)
             self.initUpdateRateStep()
         else:
@@ -179,18 +205,17 @@ class ImageDisplay(QWidget):
         # Window Scaling Dropdown
         self.windows_scaling_dropdown = QComboBox(self)
         self.updateWindowsScalingOptions()
-        self.windows_scaling_label = QLabel('Window Scaling')
+        self.windows_scaling_label = QLabel("Window Scaling")
         self.slider_layout.addWidget(self.windows_scaling_label)
         self.slider_layout.addWidget(self.windows_scaling_dropdown)
 
-        self.confirmWindowsScaling_button = QPushButton('Confirm')
+        self.confirmWindowsScaling_button = QPushButton("Confirm")
         self.confirmWindowsScaling_button.clicked.connect(self.confirmWindowsScaling)
         self.slider_layout.addWidget(self.confirmWindowsScaling_button)
 
-
     def confirmWindowsScaling(self):
         global config
-        config['windows_scaling'] = self.windows_scaling_dropdown.currentText()
+        config["windows_scaling"] = self.windows_scaling_dropdown.currentText()
 
         self.windows_scaling_label.setParent(None)
         self.windows_scaling_dropdown.setParent(None)
@@ -204,17 +229,17 @@ class ImageDisplay(QWidget):
         # Buffbar Size Dropdown
         self.buffbar_size_dropdown = QComboBox(self)
         self.updateBuffbarSizeOptions()
-        self.buffbar_size_label = QLabel('Buffbar Size')
+        self.buffbar_size_label = QLabel("Buffbar Size")
         self.slider_layout.addWidget(self.buffbar_size_label)
         self.slider_layout.addWidget(self.buffbar_size_dropdown)
 
-        self.confirmBuffbarSize_button = QPushButton('Confirm')
+        self.confirmBuffbarSize_button = QPushButton("Confirm")
         self.confirmBuffbarSize_button.clicked.connect(self.confirmBuffbarSize)
         self.slider_layout.addWidget(self.confirmBuffbarSize_button)
 
     def confirmBuffbarSize(self):
         global config
-        config['buffbar_size'] = self.buffbar_size_dropdown.currentText()
+        config["buffbar_size"] = self.buffbar_size_dropdown.currentText()
 
         self.buffbar_size_label.setParent(None)
         self.buffbar_size_dropdown.setParent(None)
@@ -229,7 +254,9 @@ class ImageDisplay(QWidget):
         self.update_rate_slider = QSlider(Qt.Horizontal)
         self.update_rate_slider.setRange(10, 1000)  # Range in milliseconds
         self.update_rate_slider.setValue(50)  # Default update rate
-        self.update_rate_label = QLabel(f'Update Rate: {self.update_rate_slider.value()} ms')
+        self.update_rate_label = QLabel(
+            f"Update Rate: {self.update_rate_slider.value()} ms"
+        )
         self.update_rate_textbox = QLineEdit(self)
         self.update_rate_textbox.setText(str(self.update_rate_slider.value()))
         self.update_rate_slider.valueChanged.connect(self.updateRateChanged)
@@ -239,7 +266,7 @@ class ImageDisplay(QWidget):
         self.slider_layout.addWidget(self.update_rate_slider)
         self.slider_layout.addWidget(self.update_rate_textbox)
 
-        self.confirmUpdateRate_button = QPushButton('Confirm')
+        self.confirmUpdateRate_button = QPushButton("Confirm")
         self.confirmUpdateRate_button.clicked.connect(self.confirmUpdateRate)
         self.slider_layout.addWidget(self.confirmUpdateRate_button)
 
@@ -247,7 +274,7 @@ class ImageDisplay(QWidget):
 
     def confirmUpdateRate(self):
         global config
-        config['update_rate'] = self.update_rate_slider.value()
+        config["update_rate"] = self.update_rate_slider.value()
 
         self.update_rate_label.setParent(None)
         self.update_rate_slider.setParent(None)
@@ -263,27 +290,27 @@ class ImageDisplay(QWidget):
         self.update()
         # ROI Sliders
         self.main_roi_sliders = {
-            'left': QSlider(Qt.Horizontal),
-            'top': QSlider(Qt.Horizontal),
-            'width': QSlider(Qt.Horizontal),
-            'height': QSlider(Qt.Horizontal)
+            "left": QSlider(Qt.Horizontal),
+            "top": QSlider(Qt.Horizontal),
+            "width": QSlider(Qt.Horizontal),
+            "height": QSlider(Qt.Horizontal),
         }
         self.main_roi_labels = {
-            'left': QLabel('Left'),
-            'top': QLabel('Top'),
-            'width': QLabel('Width'),
-            'height': QLabel('Height')
+            "left": QLabel("Left"),
+            "top": QLabel("Top"),
+            "width": QLabel("Width"),
+            "height": QLabel("Height"),
         }
-        self.main_roi_sliders['left'].setRange(0, self.screen().size().width())
-        self.main_roi_sliders['top'].setRange(0, self.screen().size().height())
-        self.main_roi_sliders['width'].setRange(0, self.screen().size().width())
-        self.main_roi_sliders['height'].setRange(0, self.screen().size().height())
+        self.main_roi_sliders["left"].setRange(0, self.screen().size().width())
+        self.main_roi_sliders["top"].setRange(0, self.screen().size().height())
+        self.main_roi_sliders["width"].setRange(0, self.screen().size().width())
+        self.main_roi_sliders["height"].setRange(0, self.screen().size().height())
 
         for key, slider in self.main_roi_sliders.items():
             slider.setValue(main_roi[key])
             slider.valueChanged.connect(self.updateROI)
 
-        self.confirmROI_button = QPushButton('Confirm')
+        self.confirmROI_button = QPushButton("Confirm")
         self.confirmROI_button.clicked.connect(self.confirmROI)
 
         for key in self.main_roi_sliders.keys():
@@ -293,7 +320,7 @@ class ImageDisplay(QWidget):
 
     def confirmROI(self):
         global config, main_roi
-        config['main_roi'] = main_roi
+        config["main_roi"] = main_roi
 
         for key, slider in self.main_roi_sliders.items():
             slider.setParent(None)
@@ -312,22 +339,22 @@ class ImageDisplay(QWidget):
 
         self.x_slider = QSlider(Qt.Horizontal)
         self.x_slider.setRange(0, self.width())
-        self.x_slider.setValue(image_position['x'])
+        self.x_slider.setValue(image_position["x"])
         self.x_slider.valueChanged.connect(self.updateImageProperties)
 
         self.y_slider = QSlider(Qt.Horizontal)
         self.y_slider.setRange(0, self.height())
-        self.y_slider.setValue(image_position['y'])
+        self.y_slider.setValue(image_position["y"])
         self.y_slider.valueChanged.connect(self.updateImageProperties)
 
-        self.confirm_image_button = QPushButton('Confirm Image Settings')
+        self.confirm_image_button = QPushButton("Confirm Image Settings")
         self.confirm_image_button.clicked.connect(self.confirmImageSettings)
 
-        self.slider_layout.addWidget(QLabel('Scale'))
+        self.slider_layout.addWidget(QLabel("Scale"))
         self.slider_layout.addWidget(self.scale_slider)
-        self.slider_layout.addWidget(QLabel('X Position'))
+        self.slider_layout.addWidget(QLabel("X Position"))
         self.slider_layout.addWidget(self.x_slider)
-        self.slider_layout.addWidget(QLabel('Y Position'))
+        self.slider_layout.addWidget(QLabel("Y Position"))
         self.slider_layout.addWidget(self.y_slider)
         self.slider_layout.addWidget(self.confirm_image_button)
 
@@ -338,12 +365,17 @@ class ImageDisplay(QWidget):
         scale = self.scale_slider.value() / 100.0
 
         # Update position
-        image_position['x'] = self.x_slider.value()
-        image_position['y'] = self.y_slider.value()
+        image_position["x"] = self.x_slider.value()
+        image_position["y"] = self.y_slider.value()
 
         # Load the image using PIL
         frame = cv2.imread(initial_image_path, cv2.IMREAD_UNCHANGED)
-        cv2image = cv2.cvtColor(cv2.resize(frame, (int(frame.shape[1] * scale), int(frame.shape[0] * scale))), cv2.COLOR_BGRA2RGBA)
+        cv2image = cv2.cvtColor(
+            cv2.resize(
+                frame, (int(frame.shape[1] * scale), int(frame.shape[0] * scale))
+            ),
+            cv2.COLOR_BGRA2RGBA,
+        )
         image = Image.fromarray(cv2image, mode="RGBA")
 
         # Convert the PIL image to a format suitable for QPixmap
@@ -354,7 +386,12 @@ class ImageDisplay(QWidget):
         # Update the QPixmap of the label
         self.image_label.setPixmap(pixmap)
         self.image_label.setFixedSize(pixmap.size())
-        self.image_label.setGeometry(self.x_slider.value(), self.y_slider.value(), cv2image.shape[0], cv2image.shape[1])
+        self.image_label.setGeometry(
+            self.x_slider.value(),
+            self.y_slider.value(),
+            cv2image.shape[0],
+            cv2image.shape[1],
+        )
 
     def updateROI(self):
         global main_roi
@@ -364,7 +401,7 @@ class ImageDisplay(QWidget):
 
     def updateRateChanged(self):
         value = self.update_rate_slider.value()
-        self.update_rate_label.setText(f'Update Rate: {value} ms')
+        self.update_rate_label.setText(f"Update Rate: {value} ms")
         self.update_rate_textbox.setText(str(value))
 
     def updateRateTextChanged(self):
@@ -373,7 +410,7 @@ class ImageDisplay(QWidget):
         except:
             value = 0
         self.update_rate_slider.setValue(value)
-        self.update_rate_label.setText(f'Update Rate: {value} ms')
+        self.update_rate_label.setText(f"Update Rate: {value} ms")
 
     def updateWindowsScalingOptions(self):
         self.windows_scaling_dropdown.clear()
@@ -390,13 +427,13 @@ class ImageDisplay(QWidget):
 
     def confirmImageSettings(self):
         global config, scale, image_position
-        config['scale'] = scale
-        config['image_position'] = image_position
+        config["scale"] = scale
+        config["image_position"] = image_position
 
-        if config['resolution'] == 'custom':
-            os.makedirs('custom_assets', exist_ok=True)
-            config['windows_scaling'] = ''
-            config['buffbar_size'] = ''
+        if config["resolution"] == "custom":
+            os.makedirs("custom_assets", exist_ok=True)
+            config["windows_scaling"] = ""
+            config["buffbar_size"] = ""
 
             save_config(config)
 
@@ -421,17 +458,23 @@ class ImageDisplay(QWidget):
 
     def applyConfig(self, config):
         global scale, image_position, main_roi, resolution, windows_scaling, buffbar_size, update_rate, asset_path_prefix
-        main_roi = config.get('main_roi', {'left': 1520, 'top': 1660, 'width': 795, 'height': 160})
-        scale = config.get('scale', 1/6.5)
-        image_position = config.get('image_position', {'x': 0, 'y': 0})
-        resolution = config.get('resolution', 'reso_3840x2160')
-        windows_scaling = config.get('windows_scaling', 150)
-        buffbar_size = config.get('buffbar_size', 'medium')
-        update_rate = config.get('update_rate', 50)
-        if resolution == 'custom':
-            asset_path_prefix = os.path.join('custom_assets', str(windows_scaling), buffbar_size)
+        main_roi = config.get(
+            "main_roi", {"left": 1520, "top": 1660, "width": 795, "height": 160}
+        )
+        scale = config.get("scale", 1 / 6.5)
+        image_position = config.get("image_position", {"x": 0, "y": 0})
+        resolution = config.get("resolution", "reso_3840x2160")
+        windows_scaling = config.get("windows_scaling", 150)
+        buffbar_size = config.get("buffbar_size", "medium")
+        update_rate = config.get("update_rate", 50)
+        if resolution == "custom":
+            asset_path_prefix = os.path.join(
+                "custom_assets", str(windows_scaling), buffbar_size
+            )
         else:
-            asset_path_prefix = os.path.join(base_path, 'assets', resolution, str(windows_scaling), buffbar_size)
+            asset_path_prefix = os.path.join(
+                base_path, "assets", resolution, str(windows_scaling), buffbar_size
+            )
         self.show()
 
         self.updateStacks()
@@ -451,7 +494,12 @@ class ImageDisplay(QWidget):
         self.applyVisibility()
 
         frame = cv2.imread(image_path, cv2.IMREAD_UNCHANGED)
-        cv2image = cv2.cvtColor(cv2.resize(frame, (int(frame.shape[1] * scale), int(frame.shape[0] * scale))), cv2.COLOR_BGRA2RGBA)
+        cv2image = cv2.cvtColor(
+            cv2.resize(
+                frame, (int(frame.shape[1] * scale), int(frame.shape[0] * scale))
+            ),
+            cv2.COLOR_BGRA2RGBA,
+        )
         image = Image.fromarray(cv2image, mode="RGBA")
 
         data = image.tobytes("raw", "RGBA")
@@ -460,7 +508,7 @@ class ImageDisplay(QWidget):
 
         self.image_label.setPixmap(pixmap)
         self.image_label.setFixedSize(pixmap.size())
-        self.image_label.move(image_position['x'], image_position['y'])
+        self.image_label.move(image_position["x"], image_position["y"])
 
     def captureScreen(self):
         with mss.mss() as sct:
@@ -491,49 +539,93 @@ class ImageDisplay(QWidget):
         template_list_necrosis = []
 
         for i in range(1, 6):
-            template_list_souls.append(cv2.imread(os.path.join(asset_path_prefix, f'soul_{i}.png'), cv2.IMREAD_COLOR))
-            template_list_souls.append(cv2.imread(os.path.join(asset_path_prefix, f'soul_{i}_alt.png'), cv2.IMREAD_COLOR))
+            template_list_souls.append(
+                cv2.imread(
+                    os.path.join(asset_path_prefix, f"soul_{i}.png"), cv2.IMREAD_COLOR
+                )
+            )
+            template_list_souls.append(
+                cv2.imread(
+                    os.path.join(asset_path_prefix, f"soul_{i}_alt.png"),
+                    cv2.IMREAD_COLOR,
+                )
+            )
 
         for i in [2, 4, 6, 8, 10, 12]:
-            template_list_necrosis.append(cv2.imread(os.path.join(asset_path_prefix, f'necrosis_{i}.png'), cv2.IMREAD_COLOR))
+            template_list_necrosis.append(
+                cv2.imread(
+                    os.path.join(asset_path_prefix, f"necrosis_{i}.png"),
+                    cv2.IMREAD_COLOR,
+                )
+            )
 
         game_screen = self.captureScreen()
         try:
             with ThreadPoolExecutor() as executor:
-                future_souls = executor.submit(self.matchTemplates, template_list_souls, game_screen)
-                future_necrosis = executor.submit(self.matchTemplates, template_list_necrosis, game_screen)
+                future_souls = executor.submit(
+                    self.matchTemplates, template_list_souls, game_screen
+                )
+                future_necrosis = executor.submit(
+                    self.matchTemplates, template_list_necrosis, game_screen
+                )
 
-                max_index_souls, max_value_souls, match_list_souls = future_souls.result()
-                max_index_necrosis, max_value_necrosis, match_list_necrosis = future_necrosis.result()
+                max_index_souls, max_value_souls, match_list_souls = (
+                    future_souls.result()
+                )
+                max_index_necrosis, max_value_necrosis, match_list_necrosis = (
+                    future_necrosis.result()
+                )
 
             if max_value_souls > 0.9:
                 self.soul_count = (max_index_souls // 2) + 1
-                cv2.rectangle(game_screen, match_list_souls[max_index_souls][0:2],
-                              (match_list_souls[max_index_souls][0] + match_list_souls[max_index_souls][2],
-                               match_list_souls[max_index_souls][1] + match_list_souls[max_index_souls][3]),
-                              (0, 255, 255), 2)
+                cv2.rectangle(
+                    game_screen,
+                    match_list_souls[max_index_souls][0:2],
+                    (
+                        match_list_souls[max_index_souls][0]
+                        + match_list_souls[max_index_souls][2],
+                        match_list_souls[max_index_souls][1]
+                        + match_list_souls[max_index_souls][3],
+                    ),
+                    (0, 255, 255),
+                    2,
+                )
             else:
                 self.soul_count = 0
 
             if max_value_necrosis > 0.9:
                 self.necrosis_count = (max_index_necrosis + 1) * 2
-                cv2.rectangle(game_screen, match_list_necrosis[max_index_necrosis][0:2],
-                              (match_list_necrosis[max_index_necrosis][0] + match_list_necrosis[max_index_necrosis][2],
-                               match_list_necrosis[max_index_necrosis][1] + match_list_necrosis[max_index_necrosis][3]),
-                              (0, 0, 255), 2)
+                cv2.rectangle(
+                    game_screen,
+                    match_list_necrosis[max_index_necrosis][0:2],
+                    (
+                        match_list_necrosis[max_index_necrosis][0]
+                        + match_list_necrosis[max_index_necrosis][2],
+                        match_list_necrosis[max_index_necrosis][1]
+                        + match_list_necrosis[max_index_necrosis][3],
+                    ),
+                    (0, 0, 255),
+                    2,
+                )
             else:
                 self.necrosis_count = 0
 
-            self.showFrame(os.path.join(base_path, 'assets', f'transparent_bg\\s{self.soul_count}_n{self.necrosis_count}.png'))
+            self.showFrame(
+                os.path.join(
+                    base_path,
+                    "assets",
+                    f"transparent_bg\\s{self.soul_count}_n{self.necrosis_count}.png",
+                )
+            )
 
             if self.soul_count == 5 and not self.soul_alert_played:
-                self.playAlert('soul')
+                self.playAlert("soul")
                 self.soul_alert_played = True
             elif self.soul_count < 5:
                 self.soul_alert_played = False
 
             if self.necrosis_count == 12 and not self.necrosis_alert_played:
-                self.playAlert('necrosis')
+                self.playAlert("necrosis")
                 self.necrosis_alert_played = True
             elif self.necrosis_count < 12:
                 self.necrosis_alert_played = False
@@ -544,10 +636,12 @@ class ImageDisplay(QWidget):
         QTimer.singleShot(update_rate, self.updateStacks)
 
     def playAlert(self, type):
-        if type == 'soul':
+        if type == "soul":
+            pygame.mixer.music.set_volume(souls_alerts_config.get("volume", 0.5))
             pygame.mixer.music.load(soul_alert_sound_path)
             pygame.mixer.music.play()
-        elif type == 'necrosis':
+        elif type == "necrosis":
+            pygame.mixer.music.set_volume(necrosis_alerts_config.get("volume", 0.5))
             pygame.mixer.music.load(necrosis_alert_sound_path)
             pygame.mixer.music.play()
 
@@ -561,7 +655,9 @@ class ImageDisplay(QWidget):
             pen = QtGui.QPen(QtGui.QColor(0, 255, 255))
             pen.setWidth(4)
             painter.setPen(pen)
-            painter.drawRect(main_roi['left'], main_roi['top'], main_roi['width'], main_roi['height'])
+            painter.drawRect(
+                main_roi["left"], main_roi["top"], main_roi["width"], main_roi["height"]
+            )
         super().paintEvent(event)
 
     def restartApplication(self):
@@ -574,7 +670,7 @@ class ImageDisplay(QWidget):
             print(f"Error restarting script: {e}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app = QApplication(sys.argv)
     ex = ImageDisplay()
     ex.show()
